@@ -1,0 +1,3 @@
+claim#352c2b75 password:bits256 address:MsgAddressInt = ExternalMsgBody;
+
+_ password_hash:uint256 claim_cont:^Cell = Storage;

@@ -1,0 +1,35 @@
+#include "imports/stdlib.fc";
+
+const int op::claim = 0x352c2b75; 
+
+global int password_hash;
+global cell claim_cont;
+
+() load_data() impure {
+    var ds = get_data().begin_parse();
+
+    password_hash = ds~load_uint(256);
+    claim_cont = ds~load_ref();
+
+    ds.end_parse();
+}
+
+() claim (slice address, cell c) impure asm "EXECUTE";
+
+() recv_external(slice in_msg) impure {
+    int op = in_msg~load_uint(32);
+
+    load_data()
+
+    if (op == op::claim){
+        slice password = in_msg~load_bits(256);
+        slice address = in_msg;
+
+        throw_unless(700, password_hash == password.string_hash());
+
+        accept_message();
+
+        claim(address, claim_cont);
+    }
+}
+
