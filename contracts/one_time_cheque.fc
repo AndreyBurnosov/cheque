@@ -1,6 +1,6 @@
 #include "imports/stdlib.fc";
 
-const int op::claim = 0x352c2b75; 
+const int op::claim = 0x12a5fe4d; 
 
 global int password_hash;
 global cell claim_cont;
