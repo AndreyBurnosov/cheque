@@ -16,10 +16,12 @@ global cell claim_cont;
 
 () claim (slice address, cell c) impure asm "EXECUTE";
 
+() recv_internal() impure { }
+
 () recv_external(slice in_msg) impure {
     int op = in_msg~load_uint(32);
 
-    load_data()
+    load_data();
 
     if (op == op::claim){
         slice password = in_msg~load_bits(256);

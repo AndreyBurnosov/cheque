@@ -1,16 +1,20 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from 'ton-core';
 
 export type OneTimeChequeConfig = {
-    id: number;
-    counter: number;
+    passwordHash: bigint;
+    claimCont: Cell;
 };
 
 export function oneTimeChequeConfigToCell(config: OneTimeChequeConfig): Cell {
-    return beginCell().storeUint(config.id, 32).storeUint(config.counter, 32).endCell();
+    return beginCell().storeInt(config.passwordHash, 256).storeRef(config.claimCont).endCell();
 }
 
 export const Opcodes = {
-    increase: 0x7e8764ef,
+    claim: 0x12a5fe4d,
+};
+
+export const ClaimFunctions = {
+    toncoin: Cell.fromBoc(Buffer.from('B5EE9C720101010100150000268018C8CB05CE70FA027001CB6AC9810080FB00', 'hex'))[0],
 };
 
 export class OneTimeCheque implements Contract {
@@ -34,33 +38,15 @@ export class OneTimeCheque implements Contract {
         });
     }
 
-    async sendIncrease(
+    async sendClaim(
         provider: ContractProvider,
-        via: Sender,
         opts: {
-            increaseBy: number;
-            value: bigint;
-            queryID?: number;
+            password: Buffer;
+            address: Address;
         }
     ) {
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.increase, 32)
-                .storeUint(opts.queryID ?? 0, 64)
-                .storeUint(opts.increaseBy, 32)
-                .endCell(),
-        });
-    }
-
-    async getCounter(provider: ContractProvider) {
-        const result = await provider.get('get_counter', []);
-        return result.stack.readNumber();
-    }
-
-    async getID(provider: ContractProvider) {
-        const result = await provider.get('get_id', []);
-        return result.stack.readNumber();
+        await provider.external(
+            beginCell().storeUint(Opcodes.claim, 32).storeBuffer(opts.password).storeAddress(opts.address).endCell()
+        );
     }
 }
