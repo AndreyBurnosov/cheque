@@ -1,9 +1,10 @@
-import { Blockchain, SandboxContract } from '@ton-community/sandbox';
-import { Cell, toNano } from 'ton-core';
+import { Blockchain, SandboxContract, TreasuryContract } from '@ton-community/sandbox';
+import { Cell, beginCell, toNano } from 'ton-core';
 import { OneTimeCheque, ClaimFunctions } from '../wrappers/OneTimeCheque';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
 import { getSecureRandomBytes, sha256 } from 'ton-crypto';
+import { randomAddress } from '@ton-community/test-utils';
 
 describe('OneTimeCheque', () => {
     let code: Cell;
@@ -14,25 +15,25 @@ describe('OneTimeCheque', () => {
 
     let blockchain: Blockchain;
     let oneTimeCheque: SandboxContract<OneTimeCheque>;
+    let deployer: SandboxContract<TreasuryContract>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
+        deployer = await blockchain.treasury('deployer');
     });
 
-    it('should deploy', async () => {
+    it('should deploy simple cheque', async () => {
         const password: Buffer = await getSecureRandomBytes(32);
 
         oneTimeCheque = blockchain.openContract(
             OneTimeCheque.createFromConfig(
                 {
-                    passwordHash: BigInt((await sha256(password)).readInt32BE()),
+                    passwordHash: await sha256(password),
                     claimCont: ClaimFunctions.toncoin,
                 },
                 code
             )
         );
-
-        const deployer = await blockchain.treasury('deployer');
 
         const deployResult = await oneTimeCheque.sendDeploy(deployer.getSender(), toNano('0.05'));
 
@@ -42,5 +43,52 @@ describe('OneTimeCheque', () => {
             deploy: true,
             success: true,
         });
+    });
+
+    it('should claim simple cheque', async () => {
+        const password: Buffer = await getSecureRandomBytes(32);
+
+        oneTimeCheque = blockchain.openContract(
+            OneTimeCheque.createFromConfig(
+                {
+                    passwordHash: await sha256(password),
+                    claimCont: ClaimFunctions.toncoin,
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+
+        await oneTimeCheque.sendDeploy(deployer.getSender(), toNano('1'));
+        const result = await oneTimeCheque.sendClaim({ password: password, address: addr });
+
+        expect(result.transactions).toHaveTransaction({
+            from: oneTimeCheque.address,
+            to: addr,
+        });
+
+        const balance = (await blockchain.getContract(addr)).balance;
+        expect(balance).toBeGreaterThan(toNano('0.9'));
+        expect(balance).toBeLessThanOrEqual(toNano('1'));
+    });
+
+    it('should not claim simple cheque', async () => {
+        const password: Buffer = await getSecureRandomBytes(32);
+        const another_password: Buffer = await getSecureRandomBytes(32);
+
+        oneTimeCheque = blockchain.openContract(
+            OneTimeCheque.createFromConfig(
+                {
+                    passwordHash: await sha256(password),
+                    claimCont: ClaimFunctions.toncoin,
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+
+        await oneTimeCheque.sendDeploy(deployer.getSender(), toNano('1'));
+
+        await expect(oneTimeCheque.sendClaim({ password: another_password, address: addr })).rejects.toThrow();
     });
 });

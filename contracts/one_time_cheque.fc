@@ -2,19 +2,19 @@
 
 const int op::claim = 0x12a5fe4d; 
 
-global int password_hash;
-global cell claim_cont;
+global slice password_hash;
+global cont claim_cont;
 
 () load_data() impure {
     var ds = get_data().begin_parse();
 
-    password_hash = ds~load_uint(256);
-    claim_cont = ds~load_ref();
+    password_hash = ds~load_bits(256);
+    claim_cont = ds~load_ref().begin_parse().bless();
 
     ds.end_parse();
 }
 
-() claim (slice address, cell c) impure asm "EXECUTE";
+() claim (slice address, cont c) impure asm "EXECUTE";
 
 () recv_internal() impure { }
 
@@ -27,7 +27,7 @@ global cell claim_cont;
         slice password = in_msg~load_bits(256);
         slice address = in_msg;
 
-        throw_unless(700, password_hash == password.string_hash());
+        throw_unless(700, password_hash.equal_slice_bits(begin_cell().store_uint(password.string_hash(), 256).end_cell().begin_parse()));
 
         accept_message();
 

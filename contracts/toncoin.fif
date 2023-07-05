@@ -1,6 +1,6 @@
 "Asm.fif" include
-<{ 
-    24 PUSHINT
+<{
+    16 PUSHINT
     NEWC
     6 STU
     STSLICE

@@ -1,12 +1,18 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from 'ton-core';
 
-export type OneTimeChequeConfig = {
-    passwordHash: Buffer;
+export type MultiChequeConfig = {
+    passwordHash: bigint;
     claimCont: Cell;
+    chequeAmount: bigint;
 };
 
-export function oneTimeChequeConfigToCell(config: OneTimeChequeConfig): Cell {
-    return beginCell().storeBuffer(config.passwordHash).storeRef(config.claimCont).endCell();
+export function multiChequeConfigToCell(config: MultiChequeConfig): Cell {
+    return beginCell()
+        .storeUint(config.passwordHash, 256)
+        .storeRef(config.claimCont)
+        .storeCoins(config.chequeAmount)
+        .storeDict()
+        .endCell();
 }
 
 export const Opcodes = {
@@ -14,20 +20,22 @@ export const Opcodes = {
 };
 
 export const ClaimFunctions = {
-    toncoin: Cell.fromBoc(Buffer.from('B5EE9C720101010100150000268010C8CB05CE70FA027001CB6AC9810080FB00', 'hex'))[0],
+    toncoin: Cell.fromBoc(
+        Buffer.from('B5EE9C7201010101001700002A8E138018C8CB05CE70FA027001CB6AC9810080FB00', 'hex')
+    )[0],
 };
 
-export class OneTimeCheque implements Contract {
+export class MultiCheque implements Contract {
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {}
 
     static createFromAddress(address: Address) {
-        return new OneTimeCheque(address);
+        return new MultiCheque(address);
     }
 
-    static createFromConfig(config: OneTimeChequeConfig, code: Cell, workchain = 0) {
-        const data = oneTimeChequeConfigToCell(config);
+    static createFromConfig(config: MultiChequeConfig, code: Cell, workchain = 0) {
+        const data = multiChequeConfigToCell(config);
         const init = { code, data };
-        return new OneTimeCheque(contractAddress(workchain, init), init);
+        return new MultiCheque(contractAddress(workchain, init), init);
     }
 
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint) {
