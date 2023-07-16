@@ -1,18 +1,19 @@
 import { toNano } from 'ton-core';
 import { OneTimeCheque, ClaimFunctions } from '../wrappers/OneTimeCheque';
 import { compile, NetworkProvider } from '@ton-community/blueprint';
-import { getSecureRandomBytes, sha256 } from 'ton-crypto';
+import { getSecureRandomBytes, keyPairFromSeed, KeyPair, sha256 } from 'ton-crypto';
 
 export async function run(provider: NetworkProvider) {
     const passwordString = 'qwerty';
-    const amount = toNano('0.1');
+    const seed: Buffer = await sha256(passwordString);
+    const keypair: KeyPair = keyPairFromSeed(seed);
 
-    const password: Buffer = await sha256(passwordString);
+    const amount = toNano('0.1');
 
     const oneTimeCheque = provider.open(
         OneTimeCheque.createFromConfig(
             {
-                passwordHash: await sha256(password),
+                publicKey: keypair.publicKey,
                 claimCont: ClaimFunctions.toncoin,
             },
             await compile('OneTimeCheque')

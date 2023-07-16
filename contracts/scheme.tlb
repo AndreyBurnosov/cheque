@@ -1,3 +1,3 @@
-claim#12a5fe4d password:bits256 address:MsgAddressInt = ExternalMsgBody;
+claim#79b0b258 signature:bits512 address:MsgAddressInt = ExternalMsgBody;
 
-_ password_hash:uint256 claim_cont:^Cell = Storage;
+_ public_key:uint256 claim_cont:^Cell = OneTimeChequeStorage;

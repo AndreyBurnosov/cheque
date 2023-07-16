@@ -1,16 +1,16 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from 'ton-core';
 
 export type OneTimeChequeConfig = {
-    passwordHash: Buffer;
+    publicKey: Buffer;
     claimCont: Cell;
 };
 
 export function oneTimeChequeConfigToCell(config: OneTimeChequeConfig): Cell {
-    return beginCell().storeBuffer(config.passwordHash).storeRef(config.claimCont).endCell();
+    return beginCell().storeBuffer(config.publicKey).storeRef(config.claimCont).endCell();
 }
 
 export const Opcodes = {
-    claim: 0x12a5fe4d,
+    claim: 0x79b0b258,
 };
 
 export const ClaimFunctions = {
@@ -41,12 +41,12 @@ export class OneTimeCheque implements Contract {
     async sendClaim(
         provider: ContractProvider,
         opts: {
-            password: Buffer;
+            signature: Buffer;
             address: Address;
         }
     ) {
         await provider.external(
-            beginCell().storeUint(Opcodes.claim, 32).storeBuffer(opts.password).storeAddress(opts.address).endCell()
+            beginCell().storeUint(Opcodes.claim, 32).storeBuffer(opts.signature).storeAddress(opts.address).endCell()
         );
     }
 }
