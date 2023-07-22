@@ -3,7 +3,7 @@ import { Cell, beginCell, toNano } from 'ton-core';
 import { MultiCheque, ClaimFunctions } from '../wrappers/MultiCheque';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { getSecureRandomBytes, sha256 } from 'ton-crypto';
+import { getSecureRandomBytes, keyPairFromSeed, sign, KeyPair } from 'ton-crypto';
 import { randomAddress } from '@ton-community/test-utils';
 
 describe('MultiCheque', () => {
@@ -23,14 +23,17 @@ describe('MultiCheque', () => {
     });
 
     it('should deploy simple cheque', async () => {
-        const password: Buffer = await getSecureRandomBytes(32);
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
 
         multiCheque = blockchain.openContract(
             MultiCheque.createFromConfig(
                 {
-                    passwordHash: BigInt((await sha256(password)).readUInt32BE()),
+                    publicKey: keypair.publicKey,
                     claimCont: ClaimFunctions.toncoin,
                     chequeAmount: toNano('1'),
+                    activaitions: toNano('1'),
+                    helperCode: await compile('Helper'),
                 },
                 code
             )
@@ -46,5 +49,159 @@ describe('MultiCheque', () => {
         });
     });
 
-    it('should claim simple cheque', async () => {});
+    it('should claim simple cheque', async () => {
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
+
+        multiCheque = blockchain.openContract(
+            MultiCheque.createFromConfig(
+                {
+                    publicKey: keypair.publicKey,
+                    claimCont: ClaimFunctions.toncoin,
+                    chequeAmount: toNano('1'),
+                    activaitions: toNano('1'),
+                    helperCode: await compile('Helper'),
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+
+        const signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);
+
+        await multiCheque.sendDeploy(deployer.getSender(), toNano('1'));
+        const result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), { signature, address: addr });
+
+        expect(result.transactions).toHaveTransaction({
+            from: multiCheque.address,
+            to: addr,
+        });
+
+        const balance = (await blockchain.getContract(addr)).balance;
+        expect(balance).toBeGreaterThan(toNano('0.9'));
+        expect(balance).toBeLessThanOrEqual(toNano('1'));
+    });
+
+    it('should not claim simple cheque (wrong signature)', async () => {
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
+
+        multiCheque = blockchain.openContract(
+            MultiCheque.createFromConfig(
+                {
+                    publicKey: keypair.publicKey,
+                    claimCont: ClaimFunctions.toncoin,
+                    chequeAmount: toNano('1'),
+                    activaitions: toNano('1'),
+                    helperCode: await compile('Helper'),
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+        const another = randomAddress();
+
+        const signature = sign(beginCell().storeAddress(another).endCell().hash(), keypair.secretKey);
+
+        const result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), { signature, address: addr });
+
+        await multiCheque.sendDeploy(deployer.getSender(), toNano('1'));
+
+        expect(result.transactions).toHaveTransaction({
+            exitCode: 700,
+        });
+        const balance = (await blockchain.getContract(addr)).balance;
+        expect(balance).toBeLessThanOrEqual(toNano('0.1'));
+    });
+
+    it('should not claim simple cheque (usage limit)', async () => {
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
+
+        multiCheque = blockchain.openContract(
+            MultiCheque.createFromConfig(
+                {
+                    publicKey: keypair.publicKey,
+                    claimCont: ClaimFunctions.toncoin,
+                    chequeAmount: toNano('1'),
+                    activaitions: toNano('1'),
+                    helperCode: await compile('Helper'),
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+
+        const first_signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);
+
+        await multiCheque.sendDeploy(deployer.getSender(), toNano('1'));
+        const first_result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), {
+            signature: first_signature,
+            address: addr,
+        });
+
+        expect(first_result.transactions).toHaveTransaction({
+            from: multiCheque.address,
+            to: addr,
+        });
+
+        const first_balance = (await blockchain.getContract(addr)).balance;
+
+        expect(first_balance).toBeGreaterThan(toNano('0.9'));
+        expect(first_balance).toBeLessThanOrEqual(toNano('1'));
+
+        const another = randomAddress();
+
+        const signature = sign(beginCell().storeAddress(another).endCell().hash(), keypair.secretKey);
+
+        const result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), {
+            signature,
+            address: another,
+        });
+
+        expect(result.transactions).toHaveTransaction({
+            exitCode: 702,
+        });
+        const balance = (await blockchain.getContract(another)).balance;
+        expect(balance).toBeLessThanOrEqual(toNano('0.1'));
+    });
+
+    it('should not claim simple cheque (dual use)', async () => {
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
+
+        multiCheque = blockchain.openContract(
+            MultiCheque.createFromConfig(
+                {
+                    publicKey: keypair.publicKey,
+                    claimCont: ClaimFunctions.toncoin,
+                    chequeAmount: toNano('1'),
+                    activaitions: toNano('1'),
+                    helperCode: await compile('Helper'),
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+
+        const signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);
+
+        await multiCheque.sendDeploy(deployer.getSender(), toNano('1'));
+        let result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), { signature, address: addr });
+
+        expect(result.transactions).toHaveTransaction({
+            from: multiCheque.address,
+            to: addr,
+        });
+
+        let balance = (await blockchain.getContract(addr)).balance;
+        expect(balance).toBeGreaterThan(toNano('0.9'));
+        expect(balance).toBeLessThanOrEqual(toNano('1'));
+
+        await multiCheque.sendClaim(deployer.getSender(), toNano('0.05'), { signature, address: addr });
+
+        balance = (await blockchain.getContract(addr)).balance;
+        expect(balance).toBeGreaterThan(toNano('0.9'));
+        expect(balance).toBeLessThanOrEqual(toNano('1'));
+    });
 });

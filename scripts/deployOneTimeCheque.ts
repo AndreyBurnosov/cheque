@@ -1,7 +1,7 @@
 import { toNano } from 'ton-core';
 import { OneTimeCheque, ClaimFunctions } from '../wrappers/OneTimeCheque';
 import { compile, NetworkProvider } from '@ton-community/blueprint';
-import { getSecureRandomBytes, keyPairFromSeed, KeyPair, sha256 } from 'ton-crypto';
+import { keyPairFromSeed, KeyPair, sha256 } from 'ton-crypto';
 
 export async function run(provider: NetworkProvider) {
     const passwordString = 'qwerty';

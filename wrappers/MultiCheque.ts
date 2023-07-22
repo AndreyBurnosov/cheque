@@ -1,28 +1,30 @@
 import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from 'ton-core';
 
 export type MultiChequeConfig = {
-    passwordHash: bigint;
+    publicKey: Buffer;
     claimCont: Cell;
+    activaitions: bigint;
     chequeAmount: bigint;
+    helperCode: Cell;
 };
 
 export function multiChequeConfigToCell(config: MultiChequeConfig): Cell {
     return beginCell()
-        .storeUint(config.passwordHash, 256)
-        .storeRef(config.claimCont)
+        .storeBuffer(config.publicKey)
         .storeCoins(config.chequeAmount)
-        .storeDict()
+        .storeUint(config.activaitions, 64)
+        .storeUint(0n, 64)
+        .storeRef(config.claimCont)
+        .storeRef(config.helperCode)
         .endCell();
 }
 
 export const Opcodes = {
-    claim: 0x12a5fe4d,
+    claim: 0x22356c66,
 };
 
 export const ClaimFunctions = {
-    toncoin: Cell.fromBoc(
-        Buffer.from('B5EE9C7201010101001700002A8E138018C8CB05CE70FA027001CB6AC9810080FB00', 'hex')
-    )[0],
+    toncoin: Cell.fromBoc(Buffer.from('B5EE9C720101010100130000228010C8CB05CE01FA027001CB6AC970FB00', 'hex'))[0],
 };
 
 export class MultiCheque implements Contract {
@@ -48,13 +50,21 @@ export class MultiCheque implements Contract {
 
     async sendClaim(
         provider: ContractProvider,
+        via: Sender,
+        value: bigint,
         opts: {
-            password: Buffer;
+            signature: Buffer;
             address: Address;
         }
     ) {
-        await provider.external(
-            beginCell().storeUint(Opcodes.claim, 32).storeBuffer(opts.password).storeAddress(opts.address).endCell()
-        );
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.claim, 32)
+                .storeBuffer(opts.signature)
+                .storeAddress(opts.address)
+                .endCell(),
+        });
     }
 }

@@ -1,13 +1,30 @@
 import { toNano } from 'ton-core';
-import { MultiCheque } from '../wrappers/MultiCheque';
+import { MultiCheque, ClaimFunctions } from '../wrappers/MultiCheque';
 import { compile, NetworkProvider } from '@ton-community/blueprint';
+import { keyPairFromSeed, KeyPair, sha256 } from 'ton-crypto';
 
 export async function run(provider: NetworkProvider) {
-    const multiCheque = provider.open(MultiCheque.createFromConfig({}, await compile('MultiCheque')));
+    const passwordString = 'qwerty';
+    const seed: Buffer = await sha256(passwordString);
+    const keypair: KeyPair = keyPairFromSeed(seed);
 
-    await multiCheque.sendDeploy(provider.sender(), toNano('0.05'));
+    const one_use_amount = toNano('0.1');
+    const number_of_uses = toNano('1');
+    const amount = toNano('0.1');
+
+    const multiCheque = provider.open(
+        MultiCheque.createFromConfig(
+            {
+                publicKey: keypair.publicKey,
+                claimCont: ClaimFunctions.toncoin,
+                chequeAmount: one_use_amount,
+                activaitions: number_of_uses,
+                helperCode: await compile('Helper'),
+            },
+            await compile('MultiCheque')
+        )
+    );
+    await multiCheque.sendDeploy(provider.sender(), amount);
 
     await provider.waitForDeploy(multiCheque.address);
-
-    // run methods on `multiCheque`
 }

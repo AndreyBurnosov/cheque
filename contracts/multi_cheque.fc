@@ -1,62 +1,102 @@
 #include "imports/stdlib.fc";
 
-const int op::claim = 0x12a5fe4d; 
+const int op::claim = 0x22356c66;
+const int op::confirm = 0x93d37ba8;
 
-global int password_hash;
-global cell claim_cont;
+
+global int public_key;
+global cont claim_cont;
 global int cheque_amount;
-global cell users;
-
-(slice, int) dict_get? (cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET NULLSWAPIFNOT";
+global int activations;
+global int activatied;
+global cell helper_code;
 
 () load_data() impure {
     var ds = get_data().begin_parse();
 
-    password_hash = ds~load_uint(256);
-    claim_cont = ds~load_ref();
+    public_key = ds~load_uint(256);
     cheque_amount = ds~load_coins();
-    users = ds~load_dict();
+    activations = ds~load_uint(64);
+    activatied = ds~load_uint(64);
+    claim_cont = ds~load_ref().begin_parse().bless();
+    helper_code = ds~load_ref();
 
     ds.end_parse();
 }
 
-() save_data() impure inline {
-  set_data(begin_cell()
-            .store_uint(password_hash, 256)
-            .store_ref(claim_cont)
-            .store_coins(cheque_amount)
-            .store_dict(users)
-           .end_cell()
-          );
+() save_data() impure {
+    set_data(begin_cell()
+        .store_slice(get_data().begin_parse().skip_last_bits(64))
+        .store_uint(activatied, 64)
+    .end_cell()
+    );
 }
 
-() claim (int cheque_amount, slice address, cell c) impure asm "EXECUTE";
+() claim (int cheque_amount, slice address, cont c) impure asm "EXECUTE";
 
-() recv_internal() impure { }
+cell calculate_init(slice address) {
+    return begin_cell()
+        .store_uint(6, 5)
+        .store_ref(helper_code)
+        .store_ref(begin_cell()
+            .store_slice(address)
+            .store_slice(my_address())
+            .store_uint(0, 1)
+        .end_cell())
+    .end_cell();
+}
 
-() recv_external(slice in_msg) impure {
+slice calculate_address(cell init){
+    return begin_cell()
+        .store_uint(4, 3)
+        .store_int(0, 8)
+        .store_uint(cell_hash(init), 256)
+    .end_cell().begin_parse();
+}
+
+() recv_internal(cell in_msg_full, slice in_msg) impure {
+    if (in_msg.slice_bits() < 32){
+        return ();
+    }
     int op = in_msg~load_uint(32);
 
     load_data();
 
     if (op == op::claim){
-        throw_unless(703, get_balance().pair_first() >= cheque_amount);
-        slice password = in_msg~load_bits(256);
+        slice signature = in_msg~load_bits(512);
         slice address = in_msg;
+
+        throw_unless(700, check_signature(slice_hash(address), signature, public_key));
+
+        throw_unless(702, activatied < activations);
+
+        cell init = calculate_init(address);
+
+        slice addr = calculate_address(init);
         
-        throw_unless(700, password_hash == password.string_hash());
+        send_raw_message(begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(addr)
+            .store_coins(0)
+            .store_uint(6, 108)
+            .store_ref(init)
+        .end_cell(), 64);
 
-        (_, int f?) = users.dict_get?(267, address);
-
-        throw_if(701, f?);
-
-        users~dict_set(267, address, "");
+    } elseif (op == op::confirm){
+        slice address = in_msg;
+        (_, slice sender) = in_msg_full.begin_parse().skip_bits(4).load_msg_addr();
         
-        save_data();
+        cell init = calculate_init(address);
 
-        accept_message();
+        slice addr = calculate_address(init);
+
+        throw_unless(701, equal_slices(addr, sender));
 
         claim(cheque_amount, address, claim_cont);
+
+        activatied += 1000000000;
+
+        save_data();
     }
 }
 

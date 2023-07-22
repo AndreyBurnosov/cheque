@@ -3,7 +3,7 @@ import { Cell, beginCell, toNano } from 'ton-core';
 import { OneTimeCheque, ClaimFunctions } from '../wrappers/OneTimeCheque';
 import '@ton-community/test-utils';
 import { compile } from '@ton-community/blueprint';
-import { getSecureRandomBytes, keyPairFromSeed, sign, signVerify, KeyPair } from 'ton-crypto';
+import { getSecureRandomBytes, keyPairFromSeed, sign, KeyPair } from 'ton-crypto';
 import { randomAddress } from '@ton-community/test-utils';
 
 describe('OneTimeCheque', () => {
@@ -76,23 +76,26 @@ describe('OneTimeCheque', () => {
         expect(balance).toBeLessThanOrEqual(toNano('1'));
     });
 
-    // it('should not claim simple cheque', async () => {
-    //     const password: Buffer = await getSecureRandomBytes(32);
-    //     const another_password: Buffer = await getSecureRandomBytes(32);
+    it('should not claim simple cheque', async () => {
+        const seed: Buffer = await getSecureRandomBytes(32);
+        const keypair: KeyPair = keyPairFromSeed(seed);
 
-    //     oneTimeCheque = blockchain.openContract(
-    //         OneTimeCheque.createFromConfig(
-    //             {
-    //                 passwordHash: await sha256(password),
-    //                 claimCont: ClaimFunctions.toncoin,
-    //             },
-    //             code
-    //         )
-    //     );
-    //     const addr = randomAddress();
+        oneTimeCheque = blockchain.openContract(
+            OneTimeCheque.createFromConfig(
+                {
+                    publicKey: keypair.publicKey,
+                    claimCont: ClaimFunctions.toncoin,
+                },
+                code
+            )
+        );
+        const addr = randomAddress();
+        const another = randomAddress();
 
-    //     await oneTimeCheque.sendDeploy(deployer.getSender(), toNano('1'));
+        const signature = sign(beginCell().storeAddress(another).endCell().hash(), keypair.secretKey);
 
-    //     await expect(oneTimeCheque.sendClaim({ password: another_password, address: addr })).rejects.toThrow();
-    // });
+        await oneTimeCheque.sendDeploy(deployer.getSender(), toNano('1'));
+
+        await expect(oneTimeCheque.sendClaim({ signature: signature, address: addr })).rejects.toThrow();
+    });
 });
