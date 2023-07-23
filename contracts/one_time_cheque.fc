@@ -10,8 +10,6 @@ global cont claim_cont;
 
     public_key = ds~load_uint(256);
     claim_cont = ds~load_ref().begin_parse().bless();
-
-    ds.end_parse();
 }
 
 () claim (slice address, cont c) impure asm "EXECUTE";

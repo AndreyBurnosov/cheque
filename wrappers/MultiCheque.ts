@@ -13,6 +13,7 @@ export function multiChequeConfigToCell(config: MultiChequeConfig): Cell {
         .storeBuffer(config.publicKey)
         .storeCoins(config.chequeAmount)
         .storeUint(config.activaitions, 64)
+        .storeUint(BigInt(Math.floor(Math.random() * 1e9)), 32)
         .storeUint(0n, 64)
         .storeRef(config.claimCont)
         .storeRef(config.helperCode)

@@ -6,7 +6,11 @@ export type OneTimeChequeConfig = {
 };
 
 export function oneTimeChequeConfigToCell(config: OneTimeChequeConfig): Cell {
-    return beginCell().storeBuffer(config.publicKey).storeRef(config.claimCont).endCell();
+    return beginCell()
+        .storeBuffer(config.publicKey)
+        .storeRef(config.claimCont)
+        .storeUint(BigInt(Math.floor(Math.random() * 1e9)), 32)
+        .endCell();
 }
 
 export const Opcodes = {

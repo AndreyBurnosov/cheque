@@ -17,11 +17,10 @@ global cell helper_code;
     public_key = ds~load_uint(256);
     cheque_amount = ds~load_coins();
     activations = ds~load_uint(64);
+    ds~skip_bits(32);
     activatied = ds~load_uint(64);
     claim_cont = ds~load_ref().begin_parse().bless();
     helper_code = ds~load_ref();
-
-    ds.end_parse();
 }
 
 () save_data() impure {
