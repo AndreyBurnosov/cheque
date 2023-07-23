@@ -24,7 +24,7 @@ export const Opcodes = {
 };
 
 export const ClaimFunctions = {
-    toncoin: Cell.fromBoc(Buffer.from('B5EE9C720101010100130000228010C8CB05CE01FA027001CB6AC970FB00', 'hex'))[0],
+    toncoin: Cell.fromBoc(Buffer.from('B5EE9C720101010100140000248010C8CB05CE01FA027001CB6AC98040FB00', 'hex'))[0],
 };
 
 export class MultiCheque implements Contract {

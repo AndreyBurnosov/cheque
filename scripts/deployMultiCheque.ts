@@ -9,8 +9,8 @@ export async function run(provider: NetworkProvider) {
     const keypair: KeyPair = keyPairFromSeed(seed);
 
     const one_use_amount = toNano('0.1');
-    const number_of_uses = toNano('1');
-    const amount = toNano('0.1');
+    const number_of_uses = 1n;
+    const amount = number_of_uses * one_use_amount + toNano('0.05');
 
     const multiCheque = provider.open(
         MultiCheque.createFromConfig(

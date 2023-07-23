@@ -16,5 +16,5 @@ export async function run(provider: NetworkProvider) {
         MultiCheque.createFromAddress(Address.parse('EQDtN0I4w4_0Oah38oSF0o6cOQKda1A5fPr3b_7q_7kA9gE2'))
     );
 
-    await multiCheque.sendClaim(provider.sender(), toNano('0.05'), { signature, address: address });
+    await multiCheque.sendClaim(provider.sender(), toNano('0.03'), { signature, address: address });
 }

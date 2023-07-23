@@ -10,7 +10,7 @@
     SWAP
     107 STU
     ENDC
-    0 PUSHINT
+    64 PUSHINT
     SENDRAWMSG
 }>c
 boc>B

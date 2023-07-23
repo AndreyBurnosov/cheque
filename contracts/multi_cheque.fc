@@ -94,7 +94,7 @@ slice calculate_address(cell init){
 
         claim(cheque_amount, address, claim_cont);
 
-        activatied += 1000000000;
+        activatied += 1;
 
         save_data();
     }
