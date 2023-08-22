@@ -65,11 +65,13 @@ describe('MultiCheque', () => {
                 code
             )
         );
+
         const addr = randomAddress();
 
         const signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);
 
         await multiCheque.sendDeploy(deployer.getSender(), toNano('1.05'));
+
         const result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.03'), { signature, address: addr });
 
         expect(result.transactions).toHaveTransaction({
@@ -174,7 +176,7 @@ describe('MultiCheque', () => {
                     publicKey: keypair.publicKey,
                     claimCont: ClaimFunctions.toncoin,
                     chequeAmount: toNano('1'),
-                    activaitions: 1n,
+                    activaitions: 2n,
                     helperCode: await compile('Helper'),
                 },
                 code
@@ -184,7 +186,7 @@ describe('MultiCheque', () => {
 
         const signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);
 
-        await multiCheque.sendDeploy(deployer.getSender(), toNano('1.05'));
+        await multiCheque.sendDeploy(deployer.getSender(), toNano('2.05'));
         let result = await multiCheque.sendClaim(deployer.getSender(), toNano('0.03'), { signature, address: addr });
 
         expect(result.transactions).toHaveTransaction({
@@ -194,11 +196,11 @@ describe('MultiCheque', () => {
 
         let balance = (await blockchain.getContract(addr)).balance;
         expect(balance).toBeGreaterThan(toNano('1'));
-
         await multiCheque.sendClaim(deployer.getSender(), toNano('0.03'), { signature, address: addr });
 
         balance = (await blockchain.getContract(addr)).balance;
         expect(balance).toBeGreaterThan(toNano('1'));
+        expect(balance).toBeLessThanOrEqual(toNano('1.05'));
     });
 
     it('should claim simple cheque 200 times', async () => {
@@ -219,6 +221,10 @@ describe('MultiCheque', () => {
         );
         await multiCheque.sendDeploy(deployer.getSender(), toNano('200.05'));
         for (let i = 0; i < 200; i++) {
+            let activaitions = await multiCheque.getUsage();
+
+            expect(activaitions).toEqual(BigInt(i));
+
             const addr = randomAddress();
 
             const signature = sign(beginCell().storeAddress(addr).endCell().hash(), keypair.secretKey);

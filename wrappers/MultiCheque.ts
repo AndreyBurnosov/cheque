@@ -68,4 +68,8 @@ export class MultiCheque implements Contract {
                 .endCell(),
         });
     }
+
+    async getUsage(provider: ContractProvider): Promise<bigint> {
+        return (await provider.get('get_number_of_uses', [])).stack.readBigNumber();
+    }
 }

@@ -99,3 +99,7 @@ slice calculate_address(cell init){
     }
 }
 
+(int) get_number_of_uses() method_id {
+  load_data();
+  return activatied;
+}
