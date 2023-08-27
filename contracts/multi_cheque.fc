@@ -100,7 +100,6 @@ slice calculate_address(cell init){
 
         save_data();
     } elseif (op == op::destroy) {
-        ~dump(1);
         activatied = activations;
 
         if equal_slices(sender, owner_address){
