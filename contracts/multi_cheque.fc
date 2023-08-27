@@ -2,6 +2,7 @@
 
 const int op::claim = 0x22356c66;
 const int op::confirm = 0x93d37ba8;
+const int op::destroy = 0x7ba45f85;
 
 
 global int public_key;
@@ -10,12 +11,14 @@ global int cheque_amount;
 global int activations;
 global int activatied;
 global cell helper_code;
+global slice owner_address;
 
 () load_data() impure {
     var ds = get_data().begin_parse();
 
     public_key = ds~load_uint(256);
     cheque_amount = ds~load_coins();
+    owner_address = ds~load_msg_addr();
     activations = ds~load_uint(64);
     ds~skip_bits(32);
     activatied = ds~load_uint(64);
@@ -58,6 +61,7 @@ slice calculate_address(cell init){
         return ();
     }
     int op = in_msg~load_uint(32);
+    (_, slice sender) = in_msg_full.begin_parse().skip_bits(4).load_msg_addr();
 
     load_data();
 
@@ -83,7 +87,6 @@ slice calculate_address(cell init){
 
     } elseif (op == op::confirm){
         slice address = in_msg;
-        (_, slice sender) = in_msg_full.begin_parse().skip_bits(4).load_msg_addr();
         
         cell init = calculate_init(address);
 
@@ -96,6 +99,18 @@ slice calculate_address(cell init){
         activatied += 1;
 
         save_data();
+    } elseif (op == op::destroy) {
+        ~dump(1);
+        activatied = activations;
+
+        if equal_slices(sender, owner_address){
+            send_raw_message(begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(owner_address)
+                .store_coins(0)
+                .store_uint(0, 107)
+            .end_cell(), 160);
+        }
     }
 }
 

@@ -13,7 +13,7 @@ export async function run(provider: NetworkProvider) {
     const signature = sign(beginCell().storeAddress(address).endCell().hash(), keypair.secretKey);
 
     const multiCheque = provider.open(
-        MultiCheque.createFromAddress(Address.parse('EQAzviawi6hL2ukqOFGpXFA5DIowEwTd4N4anGDRkFJn663t'))
+        MultiCheque.createFromAddress(Address.parse('EQCYTPsNtmK116FSdRoHTFblQXMIVdi91YJ1twQXJEKU0JQh'))
     );
 
     await multiCheque.sendClaim(provider.sender(), toNano('0.03'), { signature, address: address });

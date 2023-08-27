@@ -1,4 +1,4 @@
-import { toNano } from 'ton-core';
+import { Address, toNano } from 'ton-core';
 import { MultiCheque, ClaimFunctions } from '../wrappers/MultiCheque';
 import { compile, NetworkProvider } from '@ton-community/blueprint';
 import { keyPairFromSeed, KeyPair, sha256 } from 'ton-crypto';
@@ -20,6 +20,7 @@ export async function run(provider: NetworkProvider) {
                 chequeAmount: one_use_amount,
                 activaitions: number_of_uses,
                 helperCode: await compile('Helper'),
+                ownerAddress: Address.parse('EQDsD_def8Lmwk45z4UvkSuaDaJfXY8xg4l7XxIk9oOcPfRT'),
             },
             await compile('MultiCheque')
         )

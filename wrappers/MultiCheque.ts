@@ -5,6 +5,7 @@ export type MultiChequeConfig = {
     claimCont: Cell;
     activaitions: bigint;
     chequeAmount: bigint;
+    ownerAddress: Address;
     helperCode: Cell;
 };
 
@@ -12,6 +13,7 @@ export function multiChequeConfigToCell(config: MultiChequeConfig): Cell {
     return beginCell()
         .storeBuffer(config.publicKey)
         .storeCoins(config.chequeAmount)
+        .storeAddress(config.ownerAddress)
         .storeUint(config.activaitions, 64)
         .storeUint(BigInt(Math.floor(Math.random() * 1e9)), 32)
         .storeUint(0n, 64)
@@ -22,6 +24,7 @@ export function multiChequeConfigToCell(config: MultiChequeConfig): Cell {
 
 export const Opcodes = {
     claim: 0x22356c66,
+    destroy: 0x7ba45f85,
 };
 
 export const ClaimFunctions = {
@@ -66,6 +69,14 @@ export class MultiCheque implements Contract {
                 .storeBuffer(opts.signature)
                 .storeAddress(opts.address)
                 .endCell(),
+        });
+    }
+
+    async sendDestroy(provider: ContractProvider, via: Sender, value: bigint) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(Opcodes.destroy, 32).endCell(),
         });
     }
 
